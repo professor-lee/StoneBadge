@@ -2,18 +2,19 @@
 
 Stone Badge is a Node.js service that generates a stone badge SVG from the latest commit SHA of a GitHub repository. The project has no frontend build step; once started, it serves a static page and API endpoints directly:
 
-- Home page: enter a GitHub repository URL and generate a badge
-- Template upload API: upload an SVG template for the service to use
-- API: return a colored SVG badge by repository owner / repo
+- Home page: choose generation options (optional), enter a GitHub repository URL, and generate a badge
+- API: return a colored SVG badge by repository owner / repo, with optional query parameters controlling template generation (frame count, min triangle area, mesh decimation, animation duration)
+- On first use of a given parameter set, the server generates and caches an uncolored template under `templates/cache/`
 
 ## Directory Layout
 
 ```text
 project/
 ├── server.js              # Service entry point
-├── lib/                   # Business logic
+├── lib/                   # Business logic (template generator, colorizer, GitHub API)
 ├── public/                # Static frontend page
-├── templates/             # Output directory for generated SVG templates
+├── templates/
+│   └── cache/             # Generated uncolored SVG templates (one file per option hash; created at runtime)
 ├── seatstone.glb          # 3D model file, must be kept
 ├── package.json
 └── README.md
@@ -56,7 +57,7 @@ After startup, the default address is:
 
 - Home page: `http://server-ip:3000/`
 
-The template is generated automatically when the service starts. If the template is missing, check the service logs and confirm that `seatstone.glb` exists.
+On startup the service **pre-warms** the default-parameter template in `templates/cache/` (if generation succeeds). Additional templates are created on demand when a client uses other options. If generation fails, check the service logs and confirm that `seatstone.glb` exists and that `templates/` (including `templates/cache/`) is writable.
 
 ## Server Deployment Steps
 
@@ -95,10 +96,10 @@ After installation, `node_modules` will be created in the project directory. The
 
 ### 3. Configure Service Account and Write Permissions
 
-To make sure the first template generation and the template upload endpoint can write successfully, ensure that `templates/` is writable:
+To make sure template generation can write successfully, ensure that `templates/` and `templates/cache/` exist and are writable:
 
 ```bash
-sudo mkdir -p /opt/stone-badge/templates
+sudo mkdir -p /opt/stone-badge/templates/cache
 sudo chown -R www-data:www-data /opt/stone-badge/templates
 ```
 
@@ -124,7 +125,7 @@ cd /opt/stone-badge
 PORT=3000 npm start
 ```
 
-On the first startup, the service will try to generate `templates/stone-template.svg` automatically. If generation fails, check the logs, confirm that `seatstone.glb` exists, and verify that `templates/` is writable. You can also upload the template manually through `/api/template` if needed.
+On the first startup, the service will try to pre-generate the **default** cached template under `templates/cache/`. If that fails, check the logs, confirm that `seatstone.glb` exists, and verify that `templates/` is writable. For local development you can also run `node lib/template-generator.js` from the project root; it writes `templates/stone-template.svg` for offline inspection (the HTTP API uses `templates/cache/` keyed by generation options).
 
 ### 6. Configure systemd Autostart
 
@@ -200,7 +201,7 @@ server {
 
 Notes:
 
-- `client_max_body_size 20m` is important because the `/api/template` upload endpoint may receive larger SVG payloads
+- `client_max_body_size` can stay moderate; `POST /api/generate` sends a small JSON body. Raise the limit only if you add endpoints that accept large uploads.
 - If you later add HTTPS, you only need to add certificate configuration to this `server` block
 
 After enabling the config, run:
@@ -225,7 +226,7 @@ If you do not use Nginx and expose the Node port directly, you must at least ope
 
 - The home page opens successfully
 - `seatstone.glb` can be requested directly from the browser
-- `templates/stone-template.svg` has been generated successfully
+- After the first request or startup pre-warm, `templates/cache/` contains at least one `stone-*.svg` file (or check logs for generation errors)
 - Entering a GitHub repository URL returns a badge
 - Static assets and APIs work correctly behind the reverse proxy
 
@@ -237,13 +238,28 @@ If you do not use Nginx and expose the Node port directly, you must at least ope
 GET /api/stone/:owner/:repo
 ```
 
-Example:
+Optional **query parameters** (short names; omitted values use server defaults):
+
+| Parameter | Alias | Meaning |
+|-----------|-------|---------|
+| `f` | `frames` | Rotation animation frame count (clamped 8–32) |
+| `a` | `minArea` | Minimum projected triangle area; smaller = finer, larger SVG |
+| `s` | `simplify` | Mesh decimation strength: SimplifyModifier edge-collapse iterations (0–3000) |
+| `d` | `animDuration` | Seconds for one full rotation loop (clamped 4–60) |
+
+Example (defaults implied):
 
 ```text
 GET /api/stone/vercel/next.js
 ```
 
-The response body is an SVG image.
+Example with explicit options:
+
+```text
+GET /api/stone/vercel/next.js?f=16&a=1.2&s=0&d=10
+```
+
+The response body is an SVG image (`image/svg+xml`).
 
 ### 2. Parse Repository URL
 
@@ -255,29 +271,27 @@ Request body:
 
 ```json
 {
-  "repoUrl": "https://github.com/owner/repo"
+  "repoUrl": "https://github.com/owner/repo",
+  "frameCount": 16,
+  "minFaceArea": 1.2,
+  "simplifyCollapses": 0,
+  "animDuration": 10
 }
 ```
 
-Returns the repository owner, repo, short SHA, and badge URL.
+Only `repoUrl` is required. Other fields follow the same semantics and clamping as the GET query parameters. The server ensures the matching template exists in `templates/cache/` before responding.
 
-### 3. Upload Template SVG
-
-```text
-POST /api/template
-```
-
-This endpoint uploads SVG text and saves it to `templates/stone-template.svg`.
+Response JSON includes at least: `owner`, `repo`, `short` SHA (`sha`), `badgeUrl` (path plus query string), and `generateOptions` (normalized values used).
 
 ## Common Issues
 
-### 1. The page says the template has not been generated yet
+### 1. Badge request fails or logs show template generation errors
 
-This means `templates/stone-template.svg` does not exist, or the automatic generation failed on first startup. Fix it by:
+Usually `seatstone.glb` is missing, Node.js is too old, or `templates/` / `templates/cache/` is not writable. Fix it by:
 
-1. Confirming that `seatstone.glb` exists
+1. Confirming that `seatstone.glb` exists next to `server.js`
 2. Checking the service logs for template generation errors
-3. Making `templates/` writable and restarting the service
+3. Making `templates/` writable (`mkdir -p templates/cache` if needed) and restarting the service
 
 ### 2. GitHub API fails or rate limits
 
@@ -287,13 +301,9 @@ This is usually caused by a missing `GITHUB_TOKEN` or network access problems fr
 2. Configure `GITHUB_TOKEN`
 3. Check proxy, firewall, and DNS settings
 
-### 3. Template upload fails
+### 3. First request is slow
 
-Check the following:
-
-1. Whether Nginx `client_max_body_size` is too small
-2. Whether `templates/` has write permission
-3. Whether `seatstone.glb` exists
+The first request for a **new** combination of `f`/`a`/`s`/`d` must run the 3D-to-SVG pipeline once; later requests with the same parameters reuse the cached file under `templates/cache/`.
 
 ### 4. The service exits immediately after startup
 
@@ -320,5 +330,5 @@ If the update does not change dependencies, `npm install` can be skipped, but ke
 ## Notes
 
 - The project has no frontend bundling step; files under `public/` are served directly as static assets
-- The SVG template is generated on the server first, and if that fails, it can be uploaded manually through `/api/template`
+- Uncolored templates are generated on the server and stored under `templates/cache/`; the colored SVG returned by the API is produced in memory from that file and the repo SHA
 - The recommended production setup is: `systemd` keepalive + `Nginx` reverse proxy + `GITHUB_TOKEN` to reduce rate-limit risk

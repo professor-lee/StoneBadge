@@ -2,18 +2,19 @@
 
 Stone Badge 是一个基于 GitHub 仓库最近一次提交 SHA 生成石墩子 SVG 徽章的 Node.js 服务。项目本身没有前端构建步骤，启动后会直接提供静态页面和 API：
 
-- 首页：输入 GitHub 仓库地址并生成徽章
-- 模板上传 API：上传 SVG 模板供服务端使用
-- API：按仓库 owner / repo 返回着色后的 SVG 徽章
+- 首页：可选调整生成参数，输入 GitHub 仓库地址并生成徽章
+- API：按仓库 owner / repo 返回着色后的 SVG；可通过查询参数控制模板生成（帧数、最小三角面积、减面强度、动画时长）
+- 某一组参数首次被使用时，服务端会在 **`templates/cache/`** 中生成并缓存未着色模板
 
 ## 目录说明
 
 ```text
 project/
 ├── server.js              # 服务入口
-├── lib/                   # 业务逻辑
+├── lib/                   # 业务逻辑（模板生成、着色、GitHub API）
 ├── public/                # 静态前端页面
-├── templates/             # 生成后的 SVG 模板输出目录
+├── templates/
+│   └── cache/             # 运行时生成的未着色 SVG 模板（按参数哈希命名）
 ├── seatstone.glb          # 3D 模型文件，必须保留
 ├── package.json
 └── README.md
@@ -56,7 +57,7 @@ npm start
 
 - 首页：`http://服务器IP:3000/`
 
-模板会在服务启动时自动生成；如果模板缺失，先检查服务日志和 `seatstone.glb` 文件是否存在。
+服务启动时会尝试**预热**默认参数对应的缓存模板（写入 `templates/cache/`）。其他参数组合会在首次被请求时再生成。若生成失败，请检查服务日志、`seatstone.glb` 是否存在，以及 `templates/`（含 `templates/cache/`）是否可写。
 
 ## 服务器部署步骤
 
@@ -95,10 +96,10 @@ npm install
 
 ### 3. 配置服务账号和写权限
 
-为了让首次模板生成和模板上传接口都能正常写入，建议先确保 `templates/` 目录可写：
+为了让模板生成能正常写入，建议先确保 `templates/` 与 `templates/cache/` 存在且可写：
 
 ```bash
-sudo mkdir -p /opt/stone-badge/templates
+sudo mkdir -p /opt/stone-badge/templates/cache
 sudo chown -R www-data:www-data /opt/stone-badge/templates
 ```
 
@@ -124,7 +125,7 @@ cd /opt/stone-badge
 PORT=3000 npm start
 ```
 
-第一次启动时，服务会尝试自动生成 `templates/stone-template.svg`。如果自动生成失败，请查看服务日志、确认 `seatstone.glb` 存在，并检查 `templates/` 目录可写；必要时也可以通过 `/api/template` 手动上传模板。
+第一次启动时，服务会尝试预生成**默认参数**下的缓存文件（位于 `templates/cache/`）。如果失败，请查看服务日志、确认 `seatstone.glb` 存在，并检查 `templates/` 可写。本地开发也可在项目根目录执行 `node lib/template-generator.js`，会生成 `templates/stone-template.svg` 供离线查看（HTTP 接口实际使用按参数区分的 `templates/cache/`）。
 
 ### 6. 配置 systemd 开机自启
 
@@ -200,7 +201,7 @@ server {
 
 说明：
 
-- `client_max_body_size 20m` 很重要，因为模板上传接口 `/api/template` 可能提交较大的 SVG 内容
+- `client_max_body_size` 一般不必很大；`POST /api/generate` 仅提交较小 JSON。若日后增加接收大文件的上传接口再相应调大。
 - 如果你后面接入 HTTPS，只需要给这个 `server` 块补充证书配置即可
 
 启用配置后执行：
@@ -225,7 +226,7 @@ sudo ufw allow 443/tcp
 
 - 首页能正常打开
 - `seatstone.glb` 可以从浏览器直接请求到
-- `templates/stone-template.svg` 已成功生成
+- 首次预热或首次请求后，`templates/cache/` 下出现 `stone-*.svg`（或日志无生成错误）
 - 输入一个 GitHub 仓库链接后可以返回徽章
 - 反向代理后静态资源和 API 都能正常工作
 
@@ -237,13 +238,28 @@ sudo ufw allow 443/tcp
 GET /api/stone/:owner/:repo
 ```
 
-示例：
+可选 **查询参数**（短参数名；省略则使用服务端默认值）：
+
+| 参数 | 别名 | 含义 |
+|------|------|------|
+| `f` | `frames` | 旋转动画帧数（限制在 8–32） |
+| `a` | `minArea` | 投影后最小三角形面积，越小越细、SVG 越大 |
+| `s` | `simplify` | 网格减面强度：SimplifyModifier 边折叠迭代次数（0–3000） |
+| `d` | `animDuration` | 单圈旋转动画时长（秒，限制在 4–60） |
+
+示例（省略参数即默认）：
 
 ```text
 GET /api/stone/vercel/next.js
 ```
 
-返回内容是 SVG 图像。
+显式指定参数示例：
+
+```text
+GET /api/stone/vercel/next.js?f=16&a=1.2&s=0&d=10
+```
+
+返回 `image/svg+xml` 的 SVG 内容。
 
 ### 2. 解析仓库链接
 
@@ -255,29 +271,25 @@ POST /api/generate
 
 ```json
 {
-  "repoUrl": "https://github.com/owner/repo"
+  "repoUrl": "https://github.com/owner/repo",
+  "frameCount": 16,
+  "minFaceArea": 1.2,
+  "simplifyCollapses": 0,
+  "animDuration": 10
 }
 ```
 
-返回仓库 owner、repo、short SHA 以及徽章链接。
-
-### 3. 上传模板 SVG
-
-```text
-POST /api/template
-```
-
-这个接口用于上传一段 SVG 文本，并保存到 `templates/stone-template.svg`。
+仅 `repoUrl` 必填；其余字段与 GET 查询参数含义、范围一致，服务端会先 `clamp` 再写入缓存。响应 JSON 包含 `owner`、`repo`、`sha`（短 SHA）、`badgeUrl`（带查询串的路径）、`generateOptions`（规范化后的参数）。
 
 ## 常见问题
 
-### 1. 页面提示模板尚未生成
+### 1. 徽章请求失败或日志中报模板生成错误
 
-说明 `templates/stone-template.svg` 不存在，或者首次启动时自动生成失败。处理方法：
+多为 `seatstone.glb` 缺失、Node 版本过低，或 `templates/`、`templates/cache/` 不可写。处理方法：
 
-1. 确认 `seatstone.glb` 文件存在
+1. 确认 `seatstone.glb` 与 `server.js` 在同一项目根目录
 2. 查看服务日志中的模板生成错误
-3. 确认 `templates/` 目录可写后重启服务
+3. 执行 `mkdir -p templates/cache`，保证 `templates/` 可写后重启服务
 
 ### 2. GitHub API 访问失败或限流
 
@@ -287,13 +299,9 @@ POST /api/template
 2. 配置 `GITHUB_TOKEN`
 3. 检查代理、防火墙和 DNS
 
-### 3. 模板上传失败
+### 3. 首次打开某组参数很慢
 
-检查这几个点：
-
-1. Nginx 的 `client_max_body_size` 是否过小
-2. `templates/` 目录是否有写权限
-3. `seatstone.glb` 是否存在
+某一组 `f`/`a`/`s`/`d` **第一次**被请求时需要完整跑一遍 3D 转 SVG；相同参数之后会直接使用 `templates/cache/` 中的文件。
 
 ### 4. 服务启动后立刻退出
 
@@ -320,5 +328,5 @@ sudo systemctl restart stone-badge
 ## 备注
 
 - 项目没有前端打包流程，`public/` 下的文件会被直接静态托管
-- 模板 SVG 会优先在服务端生成，失败时可以通过 `/api/template` 手动上传
+- 未着色模板由服务端生成并保存在 `templates/cache/`；接口返回的着色 SVG 是在内存中根据该文件与仓库 SHA 计算得到
 - 服务器部署时最推荐的方式是：`systemd` 保活 + `Nginx` 反向代理 + `GITHUB_TOKEN` 降低限流风险
