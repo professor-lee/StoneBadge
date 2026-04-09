@@ -36,7 +36,61 @@ h1 {
 .input-group {
   display: flex;
   gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.options-panel {
   margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  background: #ffffff;
+  border: 1px solid #d0d7de;
+  border-radius: 8px;
+}
+
+.options-title {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2328;
+  margin-bottom: 0.75rem;
+}
+
+.options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem 1rem;
+}
+
+@media (max-width: 560px) {
+  .options-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.option-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.option-label {
+  font-size: 0.8rem;
+  color: #57606a;
+}
+
+.options-panel select {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #24292f;
+  font-size: 0.9rem;
+  width: 100%;
+}
+
+.options-panel select:focus {
+  outline: none;
+  border-color: #0969da;
+  box-shadow: 0 0 0 3px rgba(9, 105, 218, 0.2);
 }
 
 input[type="text"] {
@@ -142,6 +196,10 @@ button:active {
   border-radius: 3px;
   color: #0550ae;
   font-family: 'SFMono-Regular', Consolas, monospace;
+}
+
+.svg-size-info {
+  margin-top: 0.35rem;
 }
 
 .links h3 {
