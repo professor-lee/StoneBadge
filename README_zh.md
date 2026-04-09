@@ -11,11 +11,6 @@
 ## 项目概述
 
 Stone Badge 是一个基于 GitHub 仓库最近一次提交 SHA 生成 3D 石墩子 SVG 徽章的 Node.js 服务。它会读取仓库最新提交记录，把短 SHA 转换为独一无二的颜色、渐变和发光效果，并输出可直接嵌入 README 的 SVG 徽章。
-
-当前仓库：<https://github.com/professor-lee/StoneBadge>
-
-在线访问：<https://stone.professorlee.work>
-
 ## 使用地址
 
 - 演示站点：<https://stone.professorlee.work>

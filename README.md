@@ -11,11 +11,6 @@
 ## Project Overview
 
 Stone Badge is a Node.js service that generates a 3D stone badge SVG from the latest commit SHA of a GitHub repository. It reads the repository's newest commit, turns the short SHA into unique colors, gradients, and glow effects, and returns an SVG badge that can be embedded directly into a README.
-
-Current repository: <https://github.com/professor-lee/StoneBadge>
-
-Live site: <https://stone.professorlee.work>
-
 ## Usage Address
 
 - Live demo: <https://stone.professorlee.work>
