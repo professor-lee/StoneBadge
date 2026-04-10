@@ -3,6 +3,11 @@ document.getElementById('repoUrl').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') generate();
 });
 
+const githubStarCountEl = document.getElementById('githubStarCount');
+if (githubStarCountEl) {
+  loadGitHubStars();
+}
+
 async function generate() {
   const repoUrl = document.getElementById('repoUrl').value.trim();
   if (!repoUrl) return;
@@ -46,6 +51,24 @@ async function generate() {
     errorDiv.classList.remove('hidden');
   } finally {
     loadingDiv.classList.add('hidden');
+  }
+}
+
+async function loadGitHubStars() {
+  try {
+    const response = await fetch('https://api.github.com/repos/professor-lee/StoneBadge', {
+      headers: {
+        Accept: 'application/vnd.github+json'
+      }
+    });
+
+    if (!response.ok) throw new Error(`GitHub API returned ${response.status}`);
+
+    const data = await response.json();
+    const stars = Number.isFinite(data.stargazers_count) ? data.stargazers_count : null;
+    githubStarCountEl.textContent = stars === null ? '--' : stars.toLocaleString('zh-CN');
+  } catch (error) {
+    githubStarCountEl.textContent = '--';
   }
 }
 

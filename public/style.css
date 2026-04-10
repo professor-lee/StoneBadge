@@ -14,6 +14,57 @@ body {
   justify-content: center;
 }
 
+.github-badge {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.7rem 0.95rem;
+  border: 1px solid #d0d7de;
+  border-radius: 999px;
+  background: #f6f8fa;
+  color: #24292f;
+  text-decoration: none;
+  font-size: 0.9rem;
+  font-weight: 600;
+  backdrop-filter: blur(10px);
+}
+
+
+.github-badge__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #24292f;
+}
+
+.github-badge__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 3.2rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 640px) {
+  .github-badge {
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.6rem 0.8rem;
+    font-size: 0.82rem;
+  }
+
+  .github-badge__count {
+    min-width: 2.8rem;
+    padding: 0.18rem 0.45rem;
+  }
+}
+
 .container {
   max-width: 640px;
   width: 100%;
