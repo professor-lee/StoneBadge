@@ -21,9 +21,10 @@ Stone Badge is a Node.js service that generates a 3D stone badge SVG from the la
 - Generate a stone badge from any GitHub repository URL
 - Auto-color the SVG from the latest commit SHA, so every repository gets a distinct result
 - Preview the badge in the browser and copy Markdown, HTML, or a direct link with one click
-- Support `POST /api/generate` to parse repository URLs and return badge metadata
-- Support `GET /api/stone/:owner/:repo` to return the SVG badge directly
-- Support automatic template generation and manual template upload through `POST /api/template`
+- **Configurable generation** on the web UI: animation frame count, projection fineness (minimum triangle area), mesh decimation (Three.js `SimplifyModifier`), and one-loop animation duration
+- Server-side **template cache** under `templates/cache/` (one SVG file per parameter set; first request or `POST /api/generate` may trigger generation)
+- Support `POST /api/generate` to parse repository URLs, optional generation options, and return badge metadata plus a URL that encodes those options
+- Support `GET /api/stone/:owner/:repo` with query parameters for the same generation options
 - Keep the frontend static, with low deployment and maintenance overhead
 
 ## Tech Stack
@@ -38,19 +39,35 @@ Stone Badge is a Node.js service that generates a 3D stone badge SVG from the la
 ## Usage
 
 1. Open <https://stone.professorlee.work>
-2. Enter a GitHub repository URL, such as <https://github.com/professor-lee/StoneBadge>
-3. Click Generate Badge
-4. Copy the Markdown, HTML, or direct link into a README, document, or website
+2. (Optional) Adjust **generation parameters**: rotation frame count, projection fineness, mesh decimation level, and animation duration
+3. Enter a GitHub repository URL, such as <https://github.com/professor-lee/StoneBadge>
+4. Click **Generate Badge**
+5. Copy the Markdown, HTML, or direct link into a README, document, or website
 
-Example Markdown:
+The copied badge URL includes query parameters (`f`, `a`, `s`, `d`) so the same visual settings apply when the image is loaded. Omitting them falls back to the server defaults (see API section below).
+
+Example Markdown (default parameters):
 
 ```md
 ![Stone Badge](https://stone.professorlee.work/api/stone/professor-lee/StoneBadge)
 ```
 
-## Deployment Instructions
+Example with explicit parameters:
 
-See [DeploymentInstructions.md](DeploymentInstructions.md) for the full deployment guide.
+```md
+![Stone Badge](https://stone.professorlee.work/api/stone/professor-lee/StoneBadge?f=16&a=1.2&s=0&d=10)
+```
+
+## API (summary)
+
+| Method | Path | Purpose |
+|--------|------|---------|
+| `POST` | `/api/generate` | JSON body: `repoUrl` (required), plus optional `frameCount`, `minFaceArea`, `simplifyCollapses`, `animDuration`. Returns `badgeUrl` with query string. |
+| `GET` | `/api/stone/:owner/:repo` | Returns colored SVG. Query: `f` (frames), `a` (min face area), `s` (decimation iterations), `d` (seconds per loop). Aliases: `frames`, `minArea`, `simplify`, `animDuration`. |
+
+## Deployment
+
+See [DeploymentInstructions.md](DeploymentInstructions.md) for environment variables, disk layout, and the full API reference.
 
 ## Demo Examples
 

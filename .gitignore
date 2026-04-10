@@ -1,2 +1,4 @@
 node_modules/
 templates/stone-template.svg
+templates/cache/
+pnpm-lock.yaml
