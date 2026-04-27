@@ -135,6 +135,20 @@ The project has been adapted to run on Cloudflare Workers for improved performan
    npm run deploy
    ```
 
+### Architecture Note: Three.js vs Pre-rendered Templates
+
+Due to Cloudflare Workers' serverless architecture, **Three.js cannot run directly in the Workers environment**. The original 3D rendering requires browser APIs (Canvas, WebGL) that are not available in the V8 isolate environment.
+
+Instead, this implementation uses **pre-rendered SVG templates** that:
+- Simulate the 3D rotating effect using SVG animations
+- Preserve the visual appearance and colorization logic
+- Maintain all original functionality
+- Offer excellent performance on the edge
+
+For true Three.js rendering, consider:
+- Pre-generating templates during build time using Node.js
+- Using a traditional server deployment with Express (see original `server.js`)
+
 ### Key Differences from Node.js Version
 
 - No file system operations (templates are embedded)
@@ -143,6 +157,7 @@ The project has been adapted to run on Cloudflare Workers for improved performan
 - GitHub API calls work the same way
 - Reduced cold start times due to edge computing
 - Optimized SVG output with smaller file sizes for faster loading
+- Pre-rendered templates instead of real-time Three.js rendering
 
 ### Environment Variables
 

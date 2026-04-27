@@ -6,7 +6,7 @@ import { colorizeSVG } from './lib/colorizer.js';  // Import the optimized color
 // Use the pre-generated template for Cloudflare Workers
 const EMBEDDED_TEMPLATE = CF_TEMPLATE;
 
-// Function to get repo SHA from GitHub API
+// Function to get repo SHA from GitHub API (consistent with server.js)
 async function getRepoShortSHA(owner, repo, env = null) {
   const url = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/commits?per_page=1`;
   const headers = {
@@ -122,9 +122,9 @@ export default {
     <div class="container">
         <h1>🪨 Stone Badge Generator</h1>
         <div class="input-group">
-            <input type="text" id="repoUrl" placeholder="Enter GitHub repository URL (e.g., https://github.com/username/repo)">
+            <input type="text" id="repoUrl" placeholder="输入 GitHub 仓库地址 (例如: https://github.com/username/repo)">
         </div>
-        <button onclick="generateBadge()">Generate Badge</button>
+        <button onclick="generateBadge()">生成徽章</button>
         
         <div id="result" class="badge-preview" style="display:none;">
             <h3>Your Stone Badge:</h3>
@@ -142,7 +142,7 @@ export default {
         async function generateBadge() {
             const repoUrl = document.getElementById('repoUrl').value.trim();
             if (!repoUrl) {
-                alert('Please enter a repository URL');
+                alert('请输入仓库地址');
                 return;
             }
 
@@ -156,8 +156,8 @@ export default {
                 });
 
                 if (!response.ok) {
-                    const error = await response.text();
-                    throw new Error(error || 'Failed to generate badge');
+                    const error = await response.json();
+                    throw new Error(error.error || 'Failed to generate badge');
                 }
 
                 const data = await response.json();
@@ -177,8 +177,8 @@ export default {
                 markdownCode.textContent = '[![Stone Badge](' + window.location.origin + data.badgeUrl + ')](' + repoUrl + ')';
                 
             } catch (error) {
-                alert('Error: ' + error.message);
-                console.error('Error:', error);
+                alert('错误: ' + error.message);
+                console.error('错误:', error);
             }
         }
     </script>
@@ -196,6 +196,8 @@ export default {
         const owner = stoneMatch[1];
         const repo = stoneMatch[2];
         
+        // In server.js logic, we check if template exists before processing
+        // Since we use embedded template in worker, we assume it's always available
         // Get the short SHA for the repo, passing environment for potential GitHub token
         const sha = await getRepoShortSHA(owner, repo, env);
         
@@ -209,6 +211,7 @@ export default {
           }
         });
       } catch (error) {
+        console.error(error);
         return new Response(JSON.stringify({ error: error.message }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
@@ -221,7 +224,7 @@ export default {
       try {
         const { repoUrl } = await request.json();
         if (!repoUrl || typeof repoUrl !== 'string') {
-          return new Response(JSON.stringify({ error: 'Please provide repository URL' }), {
+          return new Response(JSON.stringify({ error: '请提供仓库链接' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
           });
@@ -229,7 +232,7 @@ export default {
 
         const match = repoUrl.match(/github\.com\/([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+)/);
         if (!match) {
-          return new Response(JSON.stringify({ error: 'Invalid GitHub repository URL' }), {
+          return new Response(JSON.stringify({ error: '无效的 GitHub 仓库链接' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' }
           });
@@ -244,6 +247,7 @@ export default {
           headers: { 'Content-Type': 'application/json' }
         });
       } catch (error) {
+        console.error(error);
         return new Response(JSON.stringify({ error: error.message }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
