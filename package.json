@@ -5,11 +5,17 @@
   "description": "GitHub 仓库石墩子徽章生成器 - 基于 commit SHA 生成独特的 3D 石墩子 SVG 徽章",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
   },
   "dependencies": {
     "express": "^4.21.0",
     "jsdom": "^24.1.0",
     "three": "0.155.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260426.1",
+    "wrangler": "^3.114.17"
   }
 }

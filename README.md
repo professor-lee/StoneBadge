@@ -97,3 +97,81 @@ See [DeploymentInstructions.md](DeploymentInstructions.md) for the full deployme
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/chart?repos=professor-lee/StoneBadge&type=date&legend=top-left)](https://www.star-history.com/?repos=professor-lee%2FStoneBadge&type=date&legend=top-left)
+
+## Cloudflare Workers Deployment
+
+The project has been adapted to run on Cloudflare Workers for improved performance and global distribution.
+
+### Prerequisites
+
+- Node.js 18 or later
+- npm
+- Wrangler CLI (`npm install -g wrangler`)
+- A Cloudflare account
+
+### Setup
+
+1. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+2. Log in to Cloudflare:
+   ```bash
+   wrangler login
+   ```
+
+3. Update `wrangler.toml` with your account details:
+   - Replace `your-account-id` with your Cloudflare account ID
+   - Optionally configure routes and environment variables
+
+4. To develop locally:
+   ```bash
+   npm run dev
+   ```
+
+5. To deploy:
+   ```bash
+   npm run deploy
+   ```
+
+### Architecture Note: Three.js vs Pre-rendered Templates
+
+Due to Cloudflare Workers' serverless architecture, **Three.js cannot run directly in the Workers environment**. The original 3D rendering requires browser APIs (Canvas, WebGL) that are not available in the V8 isolate environment.
+
+Instead, this implementation uses **pre-rendered SVG templates** that:
+- Simulate the 3D rotating effect using SVG animations
+- Preserve the visual appearance and colorization logic
+- Maintain all original functionality
+- Offer excellent performance on the edge
+
+For true Three.js rendering, consider:
+- Pre-generating templates during build time using Node.js
+- Using a traditional server deployment with Express (see original `server.js`)
+
+### Key Differences from Node.js Version
+
+- No file system operations (templates are embedded)
+- Uses Cloudflare's global edge network for faster responses
+- No need to manage servers or scaling
+- GitHub API calls work the same way
+- Reduced cold start times due to edge computing
+- Optimized SVG output with smaller file sizes for faster loading
+- Pre-rendered templates instead of real-time Three.js rendering
+
+### Environment Variables
+
+Optionally, you can set a GitHub token to increase API rate limits:
+
+```toml
+[vars]
+GITHUB_TOKEN = "your-github-personal-access-token"
+```
+
+### API Endpoints
+
+All original API endpoints are preserved:
+
+- `GET /api/stone/:owner/:repo` - Get colored SVG badge
+- `POST /api/generate` - Parse repository URL and return badge info
+- Homepage with UI at the root path
