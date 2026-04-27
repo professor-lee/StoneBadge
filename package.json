@@ -15,7 +15,7 @@
     "three": "0.155.0"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240423.0",
-    "wrangler": "^3.0.0"
+    "@cloudflare/workers-types": "^4.20260426.1",
+    "wrangler": "^3.114.17"
   }
 }

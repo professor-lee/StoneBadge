@@ -1,6 +1,7 @@
 // Cloudflare Worker implementation for Stone Badge
 import { getStoneDNA } from './lib/colorizer.js';
 import { CF_TEMPLATE } from './lib/cf-template-generator.js';
+import { colorizeSVG } from './lib/colorizer.js';  // Import the optimized colorizeSVG function
 
 // Use the pre-generated template for Cloudflare Workers
 const EMBEDDED_TEMPLATE = CF_TEMPLATE;
@@ -27,80 +28,6 @@ async function getRepoShortSHA(owner, repo, env = null) {
     throw new Error('仓库中未找到任何提交记录');
   }
   return data[0].sha.substring(0, 7);
-}
-
-// Adapted colorizeSVG function for Cloudflare Workers
-function colorizeSVG(svgTemplate, sha) {
-  const dna = getStoneDNA(sha);
-
-  // Replace all gray fills with SHA-based colors while preserving 3D effect
-  let coloredSVG = svgTemplate.replace(
-    /fill="rgb\((\d+),(\d+),(\d+)\)" stroke="rgb\(\d+,\d+,\d+\)"/g,
-    (match, rStr, gStr, bStr) => {
-      const r = parseInt(rStr);
-      const g = parseInt(gStr);
-      const b = parseInt(bStr);
-      const luminance = (r + g + b) / (3 * 255); // 0-1
-
-      let targetH, targetS;
-      if (dna.mode === 'gradient') {
-        // For simplicity in this version, we'll use a lerp function
-        const diff = dna.secondary.h - dna.primary.h;
-        const adjustedDiff = Math.abs(diff) > 180 ? (diff > 0 ? diff - 360 : diff + 360) : diff;
-        targetH = ((dna.primary.h + adjustedDiff * luminance) % 360 + 360) % 360;
-        targetS = dna.primary.s;
-      } else {
-        targetH = dna.primary.h;
-        targetS = dna.primary.s;
-      }
-
-      // Map luminance to brightness range to preserve 3D shading
-      const targetL = 15 + luminance * 60; // 15%-75%
-      
-      // Convert HSL to RGB
-      const h = targetH / 360;
-      const s = targetS / 100;
-      const l = targetL / 100;
-      
-      const c = (1 - Math.abs(2 * l - 1)) * s;
-      const x = c * (1 - Math.abs((h * 6) % 2 - 1));
-      const m = l - c / 2;
-      
-      let r1, g1, b1;
-      if (h < 1/6) { r1 = c; g1 = x; b1 = 0; }
-      else if (h < 2/6) { r1 = x; g1 = c; b1 = 0; }
-      else if (h < 3/6) { r1 = 0; g1 = c; b1 = x; }
-      else if (h < 4/6) { r1 = 0; g1 = x; b1 = c; }
-      else if (h < 5/6) { r1 = x; g1 = 0; b1 = c; }
-      else { r1 = c; g1 = 0; b1 = x; }
-      
-      const finalR = Math.round((r1 + m) * 255);
-      const finalG = Math.round((g1 + m) * 255);
-      const finalB = Math.round((b1 + m) * 255);
-      
-      return `fill="rgb(${finalR},${finalG},${finalB})" stroke="rgb(${finalR},${finalG},${finalB})"`;
-    }
-  );
-
-  // Add glow effect if applicable
-  if (dna.glow) {
-    coloredSVG = coloredSVG.replace(
-      '</filter></defs>',
-      '</filter>' +
-      '<filter id="glow" x="-50%" y="-50%" width="200%" height="200%">' +
-      '<feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur"/>' +
-      '<feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>' +
-      '</filter></defs>'
-    );
-    
-    coloredSVG = coloredSVG.replace(
-      '<g id="stone-group"',
-      '<g filter="url(#glow)"><g id="stone-group"'
-    );
-    coloredSVG = coloredSVG.replace('</svg>', '</g></svg>');
-  }
-
-  return coloredSVG;
 }
 
 // Main fetch handler for Cloudflare Worker
@@ -272,7 +199,7 @@ export default {
         // Get the short SHA for the repo, passing environment for potential GitHub token
         const sha = await getRepoShortSHA(owner, repo, env);
         
-        // Colorize the template SVG with the SHA
+        // Colorize the template SVG with the SHA using the imported function
         const svg = colorizeSVG(EMBEDDED_TEMPLATE, sha);
         
         return new Response(svg, {

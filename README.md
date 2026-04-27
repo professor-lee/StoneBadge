@@ -107,6 +107,7 @@ The project has been adapted to run on Cloudflare Workers for improved performan
 - Node.js 18 or later
 - npm
 - Wrangler CLI (`npm install -g wrangler`)
+- A Cloudflare account
 
 ### Setup
 
