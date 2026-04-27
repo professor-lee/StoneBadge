@@ -1,0 +1,19 @@
+name = "stone-badge"
+main = "./worker.js"
+compatibility_date = "2024-04-27"
+
+[env.production]
+account_id = "your-account-id"
+route = { pattern = "your-domain.com/*", zone_id = "your-zone-id" }
+
+[vars]
+# Add any environment variables here
+# GITHUB_TOKEN = "your-github-token"
+
+[[rules]]
+type = "ESModule"
+globs = ["**/*.js"]
+
+[build]
+command = ""
+upload_format = "service-worker"
