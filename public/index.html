@@ -28,6 +28,28 @@
       <button id="generateBtn">生成徽章</button>
     </div>
 
+    <div class="options-panel" aria-label="徽章生成参数">
+      <p class="options-title">生成参数</p>
+      <div class="options-grid">
+        <label class="option-field">
+          <span class="option-label">旋转动画帧数</span>
+          <select id="frameCount"> </select>
+        </label>
+        <label class="option-field">
+          <span class="option-label">投影精细度（最小三角面积）</span>
+          <select id="qualityPreset"> </select>
+        </label>
+        <label class="option-field">
+          <span class="option-label">网格减面</span>
+          <select id="decimatePreset"> </select>
+        </label>
+        <label class="option-field">
+          <span class="option-label">单圈动画时长（秒）</span>
+          <select id="animDuration"> </select>
+        </label>
+      </div>
+    </div>
+
     <div id="loading" class="loading hidden">
       <div class="spinner"></div>
       <span>正在生成...</span>
@@ -38,6 +60,7 @@
         <h3>预览</h3>
         <div id="svgPreview"></div>
         <p class="sha-info">Short SHA: <code id="shaDisplay"></code></p>
+        <p class="sha-info svg-size-info">当前 SVG 体积：<code id="svgSizeDisplay">—</code></p>
       </div>
 
       <div class="links">

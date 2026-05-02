@@ -1,3 +1,104 @@
+/** 帧数选项（与后端 clamp 8–32 一致） */
+const FRAME_OPTIONS = [8, 12, 16, 20, 24, 28, 32];
+
+/** 投影最小面积：越小三角形越多，SVG 越大 */
+const QUALITY_PRESETS = [
+  { id: 'fine', minFaceArea: 0.55, label: '高（细节多，体积大）' },
+  { id: 'balanced', minFaceArea: 1.2, label: '中（推荐）' },
+  { id: 'compact', minFaceArea: 2.5, label: '低（体积小）' }
+];
+
+/** 网格减面：SimplifyModifier 折叠迭代次数，越大越简 */
+const DECIMATE_PRESETS = [
+  { simplifyCollapses: 0, label: '无' },
+  { simplifyCollapses: 280, label: '低' },
+  { simplifyCollapses: 700, label: '中' },
+  { simplifyCollapses: 1600, label: '高' }
+];
+
+const ANIM_DURATION_OPTIONS = [8, 10, 12, 15];
+
+function fillSelect(select, options, getValue, getLabel, selectedValue) {
+  select.innerHTML = '';
+  for (const opt of options) {
+    const v = getValue(opt);
+    const el = document.createElement('option');
+    el.value = String(v);
+    el.textContent = getLabel(opt);
+    select.appendChild(el);
+  }
+  select.value = String(selectedValue);
+}
+
+function initOptionControls() {
+  const fc = document.getElementById('frameCount');
+  fillSelect(
+    fc,
+    FRAME_OPTIONS,
+    (n) => n,
+    (n) => `${n} 帧`,
+    16
+  );
+
+  const qp = document.getElementById('qualityPreset');
+  fillSelect(
+    qp,
+    QUALITY_PRESETS,
+    (p) => p.id,
+    (p) => p.label,
+    'balanced'
+  );
+
+  const dp = document.getElementById('decimatePreset');
+  fillSelect(
+    dp,
+    DECIMATE_PRESETS,
+    (p) => p.simplifyCollapses,
+    (p) => p.label,
+    0
+  );
+
+  const ad = document.getElementById('animDuration');
+  fillSelect(
+    ad,
+    ANIM_DURATION_OPTIONS,
+    (n) => n,
+    (n) => `${n} 秒`,
+    10
+  );
+}
+
+function collectGenerateBody(repoUrl) {
+  const quality = QUALITY_PRESETS.find(
+    (p) => p.id === document.getElementById('qualityPreset').value
+  ) || QUALITY_PRESETS[1];
+  const simplifyCollapses = Number(
+    document.getElementById('decimatePreset').value
+  );
+  return {
+    repoUrl,
+    frameCount: Number(document.getElementById('frameCount').value),
+    minFaceArea: quality.minFaceArea,
+    simplifyCollapses,
+    animDuration: Number(document.getElementById('animDuration').value)
+  };
+}
+
+function formatByteSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+async function fetchSvgByteSize(badgePath) {
+  const r = await fetch(badgePath, { cache: 'no-store' });
+  if (!r.ok) throw new Error(String(r.status));
+  const buf = await r.arrayBuffer();
+  return buf.byteLength;
+}
+
+initOptionControls();
+
 document.getElementById('generateBtn').addEventListener('click', generate);
 document.getElementById('repoUrl').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') generate();
@@ -24,7 +125,7 @@ async function generate() {
     const res = await fetch('/api/generate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ repoUrl })
+      body: JSON.stringify(collectGenerateBody(repoUrl))
     });
 
     const data = await res.json();
@@ -37,6 +138,16 @@ async function generate() {
     document.getElementById('svgPreview').innerHTML =
       `<img src="${data.badgeUrl}" alt="Stone Badge" />`;
     document.getElementById('shaDisplay').textContent = data.sha;
+
+    const sizeEl = document.getElementById('svgSizeDisplay');
+    sizeEl.textContent = '…';
+    fetchSvgByteSize(data.badgeUrl)
+      .then((bytes) => {
+        sizeEl.textContent = formatByteSize(bytes);
+      })
+      .catch(() => {
+        sizeEl.textContent = '未知';
+      });
 
     // 可复制链接
     document.getElementById('markdownLink').value =
