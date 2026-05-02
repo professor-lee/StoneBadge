@@ -1,0 +1,22 @@
+<svg width="64" height="64" xmlns="http://www.w3.org/2000/svg" color="#1A1915" fill="none">
+ <!-- Outer square frame -->
+
+ <!-- Left triangle: filled solid — the "material" half -->
+ <!-- Diagonal slash — the V-vector -->
+ <!-- Horizontal baseline -->
+ <!-- Registration marks: corners -->
+ <!-- Vanishing point: void center -->
+ <g>
+  <title>Layer 1</title>
+  <ellipse ry="25.23938" rx="25.23938" id="svg_1" cy="26.92183" cx="32" fill="currentColor"/>
+  <rect id="svg_2" height="4.24076" width="36.11489" y="47.75371" x="13.94255" fill="currentColor"/>
+  <rect id="svg_3" height="4.24076" width="45.9644" y="51.45739" x="9.0178" fill="currentColor"/>
+  <rect id="svg_4" height="4.24076" width="54.99312" y="55.15096" x="4.50344" fill="currentColor"/>
+  <ellipse ry="23.14122" rx="23.14122" id="svg_9" cy="26.99628" cx="32" fill="#dddddd"/>
+  <rect id="svg_10" height="5.49414" width="32.56681" y="49.3731" x="15.71659" fill="#dddddd"/>
+  <rect id="svg_12" height="4.87876" width="42.56231" y="53.06667" x="10.71885" fill="#dddddd"/>
+  <rect id="svg_13" height="1.58159" width="52.13202" y="56.47745" x="5.93399" fill="#dddddd"/>
+  <rect id="svg_14" height="12.1885" width="24.38751" y="42.67874" x="19.80624" fill="#dddddd"/>
+  <ellipse ry="6.64661" rx="6.64661" id="svg_16" cy="37.83454" cx="23.09719" fill="#ffffff"/>
+ </g>
+</svg>
